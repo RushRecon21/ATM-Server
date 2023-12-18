@@ -15,6 +15,6 @@ Currently this build is running All the Mods Version 0.2.31 Released on December
 docker run -d \
     -p <host port>:8222/tcp \
     -p <host port>:25565 \
-    --name=<container name> \
-    RushReccon21/ATM-Server
+    --name <container name> \
+    .
 ```
