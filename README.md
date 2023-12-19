@@ -16,5 +16,5 @@ docker run -d \
     -p <host port>:8222/tcp \
     -p <host port>:25565 \
     --name <container name> \
-    .
+    rushrecon21/atm-server
 ```
