@@ -15,6 +15,8 @@ Currently this build is running All the Mods Version 0.2.31 Released on December
 docker run -d \
     -p <host port>:8222/tcp \
     -p <host port>:25565 \
+    -e min_heap=<java min heap size in GB> \
+    -e max_heap=<java max heap size in GB> \
     --name <container name> \
     rushrecon21/atm-server
 ```
