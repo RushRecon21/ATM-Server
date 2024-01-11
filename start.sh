@@ -3,65 +3,82 @@
 
 function create_server() {          #this function will download and unzip contents of the server in the /srv directory
 
-    #wget the current all the mods 9 server from curseforge website
-    wget -P /srv/ https://www.curseforge.com/api/v1/mods/715572/files/4953500/download
+    if [ ! -d "/config/Minecraft_Server" ]; then
 
-    #unzip the server file
-    unzip /srv/download -d /srv/
+        #wget the current all the mods 9 server from curseforge website
+        wget -P /srv/ https://www.curseforge.com/api/v1/mods/715572/files/4953500/download
 
-    #get the serverfile directory name and store it in a variable
-    serverdirectory=$(ls /srv | grep "Server-Files")
+        #unzip the server file
+        unzip /srv/download -d /srv/
 
-    #give any .sh file in the server directory execute permissions
-    chmod +x /srv/$serverdirectory/*.sh
+        #get the serverfile directory name and store it in a variable
+        serverdirectory=$(ls /srv | grep "Server-Files")
+    
+        #rename the unzipped folder to Minecraft_Server
+        mv /srv/$serverdirectory /srv/Minecraft_Server/
+
+        #update the serverdirectory variable
+        serverdirectory=/config/Minecraft_Server
+
+        #move files into working directory
+        cp -r /srv/Minecraft_Server /config
+
+        #give any .sh file in the server directory execute permissions
+        chmod +x $serverdirectory/*.sh
+    else
+        echo "server files already exist doing nothing"
+        #Setting server directory variable again for reference later
+        serverdirectory=/config/Minecraft_Server
+    fi
 }
+
 
 
 
 function server_variables() {          #this function will serve the purpose of letting the user change ram alocation, server name, etc...
 
 
-    if [ -z  "$min_heap"]; then        #this if statement will use -z to check if the lenth of the string is 0 and if it is, return true and set min_heap to 4
+    if [ -z  "$min_heap" ]; then        #this if statement will use -z to check if the lenth of the string is 0 and if it is, return true and set min_heap to 4
 
         echo "No minimum heap size is set, defaulting to 4GB"
         min_heap=4
 
     else
 
-        echo "Minimum heap size is set to "$min_heap"GB no change required"
+        echo "Minimum heap size is set to "$min_heap"GB"
 
     fi
 
 
-    if [ -z  "$max_heap"]; then       #this if statement will use -z to check if the lenth of the string is 0 and if it is, return true and set mix_heap to 8
+    if [ -z  "$max_heap" ]; then       #this if statement will use -z to check if the lenth of the string is 0 and if it is, return true and set mix_heap to 8
 
-        echo "No minimum heap size is set, defaulting to 8GB"
+        echo "No maximum heap size is set, defaulting to 8GB"
         max_heap=8
 
     else
 
-        echo "Minimum heap size is set to "$max_heap"GB no change required"
+        echo "Maximum heap size is set to "$max_heap"GB"
 
     fi
 
 
-    if [ -f /srv/%serverdirectory/eula.txt ]; then       #if eula exists. then accpet eula and set it to true
+    if [ -f $serverdirectory/eula.txt ]; then       #if eula exists. then accpet eula and set it to true
 
         #set eula to true
         echo "eula.txt exists, setting it to true"
-        echo > /srv/$serverdirectory/eula.txt "eula=true"
+        echo > $serverdirectory/eula.txt "eula=true"
 
     else
 
         #if file does not exist create it then set it to true
         echo "eula.txt does not exist, creating it and setting it to true"
-        touch /srv/$serverdirectory/eula.txt
-        echo > /srv/$serverdirectory/eula.txt "eula=true"
+        touch $serverdirectory/eula.txt
+        echo > $serverdirectory/eula.txt "eula=true"
 
     fi
 
 
-    if [ -f /srv/%serverdirectory/user_jvm_args.txt ];then   # if user_jvm_args.txt echo in the variables else create it and echo in the variables
+    if [ -f $serverdirectory/user_jvm_args.txt ];then   # if user_jvm_args.txt echo in the variables else create it and echo in the variables
 
         #set the variables for the user_jvm_args file                                                           
         echo "user_jvm_args.txt does exist, setting variables now"    
@@ -70,7 +87,7 @@ function server_variables() {          #this function will serve the purpose of 
         
     else                                            
         echo "user_jvmm_args.txt doesn not exist, creating it and setting variables"
-        touch /srv/$serverdirectory/user_jvm_args.txt
+        touch $serverdirectory/user_jvm_args.txt
         # default command arguments for the user_jvm text file within the server directory using the jvm_args function
         jvm_args
     fi
@@ -109,7 +126,7 @@ function jvm_args(){
     "-XX:SurvivorRatio=32"\
     "-XX:+PerfDisableSharedMem"\
     "-XX:MaxTenuringThreshold=1"\
-    > /srv/$serverdirectory/user_jvm_args.txt
+    > $serverdirectory/user_jvm_args.txt
 } 
 
 # Call the functions and run them
@@ -122,7 +139,4 @@ server_variables
 jvm_args
 
 #start the minecraft server
-/srv/$serverdirectory/startserver.sh
-
-#TO DO
-# Add a place to mount the server files to so when container restarts all data isn't lost
+$serverdirectory/startserver.sh
