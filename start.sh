@@ -6,13 +6,16 @@ function create_server() {          #this function will download and unzip conte
     if [ ! -d "/config/Minecraft_Server" ]; then
 
         #wget the current all the mods 9 server from curseforge website
-        wget -P /srv/ https://www.curseforge.com/api/v1/mods/715572/files/4953500/download
-
+        wget -P /srv/ $downloadlink 
+        
         #unzip the server file
-        unzip /srv/download -d /srv/
+        unzip -q /srv/download -d /srv/
 
         #get the serverfile directory name and store it in a variable
         serverdirectory=$(ls /srv | grep "Server-Files")
+
+        #store the server version for the update function
+        echo > /srv/$serverdirectory/version.txt "$serverdirectory"
     
         #rename the unzipped folder to Minecraft_Server
         mv /srv/$serverdirectory /srv/Minecraft_Server/
@@ -21,19 +24,23 @@ function create_server() {          #this function will download and unzip conte
         serverdirectory=/config/Minecraft_Server
 
         #move files into working directory
-        cp -r /srv/Minecraft_Server /config
+        mv /srv/Minecraft_Server /config
 
         #give any .sh file in the server directory execute permissions
         chmod +x $serverdirectory/*.sh
+
+        #cleanup after install 
+        cleanup
+
     else
-        echo "server files already exist doing nothing"
-        #Setting server directory variable again for reference later
+        echo "server files already exist checking for updates"
+        
+        #set the server variable for later use
         serverdirectory=/config/Minecraft_Server
+        #run the update function
+        update
     fi
 }
-
-
-
 
 function server_variables() {          #this function will serve the purpose of letting the user change ram alocation, server name, etc...
 
@@ -78,7 +85,7 @@ function server_variables() {          #this function will serve the purpose of 
     fi
 
 
-    if [ -f $serverdirectory/user_jvm_args.txt ];then   # if user_jvm_args.txt echo in the variables else create it and echo in the variables
+    if [ -f $serverdirectory/user_jvm_args.txt ]; then   # if user_jvm_args.txt echo in the variables else create it and echo in the variables
 
         #set the variables for the user_jvm_args file                                                           
         echo "user_jvm_args.txt does exist, setting variables now"    
@@ -92,7 +99,6 @@ function server_variables() {          #this function will serve the purpose of 
         jvm_args
     fi
 }
-
 
 function jvm_args(){
 
@@ -127,10 +133,71 @@ function jvm_args(){
     "-XX:+PerfDisableSharedMem"\
     "-XX:MaxTenuringThreshold=1"\
     > $serverdirectory/user_jvm_args.txt
-} 
+}
+
+function update(){
+
+    # set a variable that contains the version of the server from the link using curl and grep
+    version=$(curl -s $downloadlink | grep -E -o ".{0}Server-Files.{7}")
+    if [ "$version" == $(<$serverdirectory/version.txt) ]; then
+        #grab the file name of the current server files and store it?
+        echo "server is already running version $version"
+    else
+
+        echo "server is not up to date, updating existing server files"
+        
+        #remove the old files from the /config directory
+        rm -r $serverdirectory/config $serverdirectory/defaultconfigs $serverdirectory/mods $serverdirectory/kubejs $serverdirectory/libraries $serverdirectory/startserver.sh
+
+        #use xargs and grep to remove the forge files
+        find /config/Minecraft_Server -maxdepth 1 | grep "installer" | xargs rm
+
+        #download updated server files
+        wget -P /srv/ $downloadlink
+
+        #unzip the server file
+        unzip -q /srv/download -d /srv/
+
+        #get the serverfile directory name and store it in a variable
+        updatedirectory=$(ls /srv | grep "Server-Files")
+
+        #store the server version for the update function
+        echo > $serverdirectory/version.txt "$updatedirectory"
+
+        #move the updated files to the existing server location
+        mv /srv/$updatedirectory/config /srv/$updatedirectory/defaultconfigs /srv/$updatedirectory/mods /srv/$updatedirectory/kubejs /srv/$updatedirectory/startserver.sh /config/Minecraft_Server
+
+        #give any .sh file in the server directory execute permissions
+        chmod +x $serverdirectory/*.sh
+        
+        echo "update complete"
+
+        #cleanup after install
+        cleanup
+
+    fi
+
+}
+
+function cleanup(){
+
+    # remove the downloaded file
+    if [ -f /srv/download ]; then
+        rm -r /srv/download
+    fi
+    
+    # remove update folder if it exists and the variable is set
+    if [ -n "$updatedirectory" ]; then
+        rm -r /srv/$updatedirectory
+    fi
+}
+
+
+#link where the server files are downloaded
+downloadlink=https://www.curseforge.com/api/v1/mods/715572/files/5016170/download
+
 
 # Call the functions and run them
-
 #create the server
 create_server
 #set the server variables from user
@@ -140,3 +207,8 @@ jvm_args
 
 #start the minecraft server
 $serverdirectory/startserver.sh
+
+
+
+# Current implementation will be that the docker container will "update" when I push a update with the link changed, so what should happen is
+# the server checks the version of the download link, compares it to the version .txt inside the /config/Server folder
