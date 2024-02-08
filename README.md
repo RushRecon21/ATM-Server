@@ -17,6 +17,7 @@ docker run -d \
     -p <host port>:25565 \
     -e min_heap=<java min heap size in GB> \
     -e max_heap=<java max heap size in GB> \
+    -v <path for server files>:/config
     --name <container name> \
     rushrecon21/atm-server
 ```
